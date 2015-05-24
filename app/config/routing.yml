@@ -1,0 +1,3 @@
+we_code_pixels_theia_backup:
+    resource: "@WeCodePixelsTheiaBackupBundle/Resources/config/routing.yml"
+    prefix:   /

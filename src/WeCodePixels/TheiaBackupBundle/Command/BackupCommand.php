@@ -1,0 +1,176 @@
+<?php
+
+namespace WeCodePixels\TheiaBackupBundle\Command;
+
+use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use WeCodePixels\TheiaBackupBundle\ConfigurationService;
+use mysqli;
+use System;
+
+class BackupCommand extends ContainerAwareCommand
+{
+    protected function configure()
+    {
+        $this
+            ->setName('theia_backup:backup')
+            ->setDescription('Execute backups');
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output)
+    {
+        /* @var ConfigurationService */
+        $configurationService = $this->getContainer()->get('wecodepixels.theia_backup.configuration_service');
+        $config = $configurationService->getConfiguration();
+        $backups = $config['backups'];
+        unset($config['backups']);
+
+        foreach ($backups as $backupConfig) {
+            // Use global settings to fill in the missing local ones.
+            $backupConfig = array_merge($config, $backupConfig);
+            $backupConfig = $configurationService->parseConfig($backupConfig);
+
+	        if (array_key_exists('source_mysql', $backupConfig)) {
+		        $this->executeMysqlBackup($input, $output, $backupConfig);
+	        }
+	        else if (array_key_exists('source_files', $backupConfig)) {
+	            $this->executeFilesBackup($input, $output, $backupConfig);
+	        }
+        }
+    }
+
+    private function executeFilesBackup(InputInterface $input, OutputInterface $output, $config)
+    {
+        $output->writeln("<info>Executing backup for \"" . $config['source_files'] . "\"</info>");
+
+        // Partial or full backup
+        $full = '';
+        if (date('j') == 1) { // Full backup on the first day of the month.
+            $full = 'full';
+        }
+
+        // Set exclusions.
+        $exclude = [];
+        if (array_key_exists('exclude', $config)) {
+            foreach ($config['exclude'] as $e) {
+                $exclude[] = '--exclude ' . escapeshellarg($e);
+            }
+        }
+        $exclude = implode(' ', $exclude);
+
+        // Backup to each destination.
+        foreach ($config['destination'] as $dest) {
+            // Remove old backups.
+            if ($config['remove_older_than']) {
+                $output->writeln("\t<comment>Removing old backups from \"" . $dest . "\"</comment>");
+                $cmd = "
+                    " . $config['duplicity_credentials_cmd'] . "
+                    duplicity \
+                        remove-older-than " . escapeshellarg($config['remove_older_than']) . " \
+                        --force \
+                        " . $config['additional_options'] . " \
+                        " . escapeshellarg($dest) . " \
+                        2>&1
+                ";
+
+                if ($output->isVerbose()) {
+                    $output->writeln("<comment>\tExecuting \"$cmd\"</comment>");
+                    passthru($cmd);
+                } else {
+                    shell_exec($cmd);
+                }
+            }
+
+            // Backup files
+            {
+                $output->writeln("\t<comment>Backing up to \"" . $dest . "\"</comment>");
+                $cmd = "
+                    " . $config['duplicity_credentials_cmd'] . "
+                    duplicity \
+                        $full \
+                        $exclude \
+                        --volsize=250 \
+                        --s3-use-new-style \
+                        " . $config['additional_options'] . " \
+                        " . ($config['allow_source_mismatch'] ? "--allow-source-mismatch" : "") . " \
+                        " . escapeshellarg($config['source_files']) . " " . escapeshellarg($dest) . " \
+                        2>&1
+                ";
+
+                if ($output->isVerbose()) {
+                    $output->writeln("<comment>\tExecuting \"$cmd\"</comment>");
+                    passthru($cmd);
+                } else {
+                    shell_exec($cmd);
+                }
+            }
+        }
+    }
+
+    private function executeMysqlBackup(InputInterface $input, OutputInterface $output, $config)
+    {
+	    $mysqlConfig = $config['source_mysql'];
+
+        $output->writeln("<info>Executing MySQL backup for hostname \"" . $mysqlConfig['hostname'] . "\"</info>");
+
+	    // Get a temporary file.
+	    //$temporaryFile = tempnam(sys_get_temp_dir(), 'theia_backup_source_mysql.sql');
+	    $cacheDir = $this->getContainer()->getParameter("kernel.cache_dir");
+	    $temporaryDir = trim(shell_exec('mktemp -d -p ' . escapeshellarg($cacheDir)));
+	    if (in_array($temporaryDir, array("", "/", "/tmp", "/var/tmp"))) {
+		    $output->writeln("\t<error>Could not create temporary directory. Aborting.</error>");
+
+		    return;
+	    }
+
+	    // Get command for excluding tables.
+		$excludeTablesCmd = '';
+		foreach ($mysqlConfig['exclude_tables'] as $table) {
+			$excludeTablesCmd .= ' --ignore-table=' . $table;
+		}
+
+	    // Create local backups.
+		$mysqli = new mysqli($mysqlConfig['hostname'], $mysqlConfig['username'], $mysqlConfig['password'], "", $mysqlConfig['port']);
+		$result = $mysqli->query("SHOW DATABASES");
+		while ($row = $result->fetch_assoc()) {
+			$database = $row['Database'];
+
+			// Skip if this is an excluded database.
+			if (in_array($database, $mysqlConfig['exclude_databases'])) {
+				continue;
+			}
+
+			// Get output file name.
+			$temporaryFile = $string = preg_replace('/[^a-zA-Z0-9]/', '_', $database);
+			$temporaryFile = $temporaryDir . '/' . $temporaryFile . '.sql';
+
+            $output->writeln("\t<comment>Creating local backup of database \"" . $database . "\"...</comment>");
+
+			// Run command.
+			$cmdHostname = $mysqlConfig['hostname'] != '' ? '-h' . $mysqlConfig['hostname'] : '';
+			$cmdPort = $mysqlConfig['port'] != '' ? '-P' . $mysqlConfig['port'] : '';
+			$cmdUsername = $mysqlConfig['username'] != '' ? '-u' . $mysqlConfig['username'] : '';
+			$cmdPassword = $mysqlConfig['password'] != '' ? '-p' . $mysqlConfig['password'] : '';
+			$cmd = "mysqldump $cmdHostname $cmdPort $cmdUsername $cmdPassword $excludeTablesCmd $database > '$temporaryFile'";
+            if ($output->isVerbose()) {
+                $output->writeln( "\t\tExecuting \"$cmd\"" );
+            }
+			shell_exec($cmd);
+		}
+
+	    // Upload backups.
+	    unset($config['source_mysql']);
+	    $config['source_files'] = $temporaryDir;
+	    $config['allow_source_mismatch'] = true;
+	    $this->executeFilesBackup($input, $output, $config);
+
+	    // Remove local backups.
+	    $output->writeln( "\t<comment>Removing local backups...</comment>" );
+	    $cmd = "rm -rf " . escapeshellarg( $temporaryDir );
+        if ($output->isVerbose()) {
+            $output->writeln( "\t\tExecuting \"$cmd\"" );
+        }
+	    shell_exec( $cmd );
+    }
+}
