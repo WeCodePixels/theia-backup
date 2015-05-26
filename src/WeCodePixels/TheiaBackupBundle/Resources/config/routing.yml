@@ -1,3 +1,7 @@
 theiabackup_homepage:
-    path:     /hello/{name}
-    defaults: { _controller: WeCodePixelsTheiaBackupBundle:Default:index }
+    path:     /
+    defaults: { _controller: WeCodePixelsTheiaBackupBundle:Dashboard:index }
+
+theiabackup_ajax_backup_status:
+    path:     /ajax/status/{backupId}
+    defaults: { _controller: WeCodePixelsTheiaBackupBundle:BackupStatus:index }

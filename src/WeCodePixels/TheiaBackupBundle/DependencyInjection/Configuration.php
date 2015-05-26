@@ -31,6 +31,7 @@ class Configuration implements ConfigurationInterface
                 ->arrayNode('backups')->isRequired()
                     ->prototype('array')
                         ->children()
+                            ->scalarNode('title')->end()
                             ->scalarNode('aws_access_key_id')->end()
                             ->scalarNode('aws_secret_access_key')->end()
                             ->scalarNode('gpg_encryption_key')->end()

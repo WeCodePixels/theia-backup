@@ -9,5 +9,6 @@
 /composer.phar
 /vendor/
 /web/bundles/
+/web/css/
 .idea
 .directory

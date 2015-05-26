@@ -1,0 +1,77 @@
+$max-width: 1000px;
+$padding-l: 10px;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  max-width: $max-width;
+  margin: 0 auto;
+
+  background: #eee;
+
+  > footer {
+    margin-top: 2 * $padding-l;
+
+    text-align: center;
+  }
+}
+
+.backups {
+  display: flex;
+
+  align-items: stretch;
+  flex-flow: row wrap;
+
+  textarea {
+    background: #f5f5f5;
+  }
+
+  > div {
+    min-width: 50%;
+    max-width: 50%;
+
+    flex: 1;
+
+    > article {
+      margin: $padding-l;
+    }
+  }
+
+  .panel-heading {
+    overflow: hidden;
+
+    .right {
+      float: right;
+    }
+
+    h1 {
+      float: left;
+
+      min-height: 40px;
+      margin: 0;
+    }
+  }
+
+  .modal-dialog {
+    width: $max-width;
+    max-width: 80%;
+
+    .modal-body {
+      font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    }
+  }
+}
+
+/* Generated using http://loadergenerator.com/ */
+.ajax-loader {
+  display: inline-block;
+
+  width: 40px;
+  height: 40px;
+
+  vertical-align: bottom;
+
+  background-image: url('/bundles/wecodepixelstheiabackup/images/gif-load.gif');
+}
