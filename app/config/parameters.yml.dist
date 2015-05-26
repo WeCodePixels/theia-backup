@@ -23,21 +23,20 @@ we_code_pixels_theia_backup:
     aws_access_key_id: ~
     aws_secret_access_key: ~
     gpg_encryption_key: ~
+    gpg_encryption_passphrase: ~
     gpg_signature_key: ~
     gpg_signature_passphrase: ~
     enable_encryption: false
     backups:
         backup_1:
-#            aws_access_key_id: 123
-#            aws_secret_access_key: 234
-#            gpg_encryption_key: 123123
-#            gpg_signature_key: 232423
-#            gpg_signature_passphrase: potato
+            title: "Files"
             source_files: "/home/liviu/test_backup/"
             destination: "file:///home/liviu/test_backup_dest/"
             remove_older_than: 2M
             allow_source_mismatch: false
+
         backup_2:
+            title: "MariaDB"
             source_mysql:
                 hostname: "localhost"
                 port: "3306"
@@ -46,18 +45,25 @@ we_code_pixels_theia_backup:
                 exclude_databases:
                     - "performance_schema"
                     - "information_schema"
+
                 exclude_tables:
                     - "mysql.innodb_index_stats"
                     - "mysql.innodb_table_stats"
+
             destination: "file:///home/liviu/test_backup_dest/mysql/"
+
             remove_older_than: 2M
             allow_source_mismatch: false
+
         backup_3:
+            title: "PostgreSQL"
             source_postgresql:
-                hostname: "localhost"
-                port: "5432"
-                username: "postgres"
-                password:
+                # The backup command to execute
+                cmd: "pg_dumpall -U postgres"
+
+                # The filename determines the format (.sql for SQL, .dump for PostgreSQL's custom format)
+                filename: "db.dump"
+
             destination: "file:///home/liviu/test_backup_dest/postgresql/"
             remove_older_than: 2M
             allow_source_mismatch: false
