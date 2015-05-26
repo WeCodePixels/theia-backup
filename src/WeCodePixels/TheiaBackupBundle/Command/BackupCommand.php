@@ -117,7 +117,7 @@ class BackupCommand extends ContainerAwareCommand
         $output->writeln("<info>Executing MySQL backup called \"" . $config['title'] . "\"</info>");
 
         // Get a temporary directory.
-        $temporaryDir = $this->getTemporaryDirectory($output);
+        $temporaryDir = $this->getTemporaryDirectory($output, $config);
         if ($temporaryDir == false) {
             return false;
         }
@@ -181,7 +181,7 @@ class BackupCommand extends ContainerAwareCommand
         $output->writeln("<info>Executing PostgreSQL backup called \"" . $config['title'] . "\...</info>");
 
         // Get a temporary directory.
-        $temporaryDir = $this->getTemporaryDirectory($output);
+        $temporaryDir = $this->getTemporaryDirectory($output, $config);
         if ($temporaryDir == false) {
             return false;
         }
@@ -218,10 +218,9 @@ class BackupCommand extends ContainerAwareCommand
         return true;
     }
 
-    protected function getTemporaryDirectory(OutputInterface $output)
+    protected function getTemporaryDirectory(OutputInterface $output, $config)
     {
-        $cacheDir = $this->getContainer()->getParameter("kernel.cache_dir");
-        $temporaryDir = trim(shell_exec('mktemp -d -p ' . escapeshellarg($cacheDir)));
+        $temporaryDir = trim(shell_exec('mktemp -d -p ' . escapeshellarg($config['temp_dir'])));
 
         if (in_array($temporaryDir, array("", "/", "/tmp", "/var/tmp"))) {
             $output->writeln("\t<error>Could not create temporary directory. Aborting.</error>");

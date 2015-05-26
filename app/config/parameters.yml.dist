@@ -27,6 +27,7 @@ we_code_pixels_theia_backup:
     gpg_signature_key: ~
     gpg_signature_passphrase: ~
     enable_encryption: false
+    temp_dir: %kernel.cache_dir%
     backups:
         backup_1:
             title: "Files"
