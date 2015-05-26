@@ -100,7 +100,6 @@ class BackupStatusService
             }
 
             $cmd = "
-                " . $config['duplicity_credentials_cmd'] . "
                 duplicity \
                     collection-status \
                     --s3-use-new-style \
@@ -110,9 +109,10 @@ class BackupStatusService
             ";
 
             if ($output->isVerbose()) {
-                $output->writeln("<comment>\tExecuting \"$cmd\"...</comment>");
+                $output->writeln("<comment>\tExecuting \"$cmd\" (credentials not shown)...</comment>");
             }
 
+            $cmd = $config['duplicity_credentials_cmd'] . " " . $cmd;
             $cmdOutput = shell_exec($cmd);
 
             if ($output->isVerbose()) {
