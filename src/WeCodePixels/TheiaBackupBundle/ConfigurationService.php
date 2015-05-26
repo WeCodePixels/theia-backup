@@ -24,30 +24,32 @@ class ConfigurationService
         }
 
         // Get credentials.
-        $config['duplicity_credentials_cmd'] = "";
-        if (
-            $config['aws_access_key_id'] &&
-            $config['aws_secret_access_key']
-        ) {
-            $config['duplicity_credentials_cmd'] .= "
+        {
+            $config['duplicity_credentials_cmd'] = "";
+            if (
+                $config['aws_access_key_id'] &&
+                $config['aws_secret_access_key']
+            ) {
+                $config['duplicity_credentials_cmd'] .= "
                 export AWS_ACCESS_KEY_ID='$config[aws_access_key_id]'
                 export AWS_SECRET_ACCESS_KEY='$config[aws_secret_access_key]'
             ";
-        }
+            }
 
-        if (isset($config['signaturePassphrase'])) {
-            $config['duplicity_credentials_cmd'] .= "
-                export SIGN_PASSPHRASE='$config[signaturePassphrase]'
+            if (isset($config['gpg_encryption_passphrase'])) {
+                $config['duplicity_credentials_cmd'] .= "
+                export PASSPHRASE='$config[gpg_encryption_passphrase]'
             ";
-        }
+            }
 
-        if (isset($config['passphrase'])) {
-            $config['duplicity_credentials_cmd'] .= "
-                export PASSPHRASE='$config[passphrase]'
+            if (isset($config['gpg_signature_passphrase'])) {
+                $config['duplicity_credentials_cmd'] .= "
+                export SIGN_PASSPHRASE='$config[gpg_signature_passphrase]'
             ";
+            }
         }
 
-        // Get additional options
+        // Get additional options.
         {
             $config['additional_options'] = [];
             //        if (isset($config['sshOptions'])) {

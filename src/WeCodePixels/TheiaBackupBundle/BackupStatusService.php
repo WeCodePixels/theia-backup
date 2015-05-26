@@ -48,6 +48,8 @@ class BackupStatusService
 
         if (array_key_exists('source_mysql', $backupConfig)) {
             $status = $this->executeMysqlStatus($output, $backupConfig);
+        } else if (array_key_exists('source_postgresql', $backupConfig)) {
+            $status = $this->executePostgresqlStatus($output, $backupConfig);
         } else if (array_key_exists('source_files', $backupConfig)) {
             $status = $this->executeFilesStatus($output, $backupConfig);
         }
@@ -65,7 +67,15 @@ class BackupStatusService
     protected function executeMysqlStatus(OutputInterface $output, $config)
     {
         $mysqlConfig = $config['source_mysql'];
-        $output->writeln("<info>Checking status for MySQL database at host \"" . $mysqlConfig['hostname'] . "\"...</info>");
+        $output->writeln("<info>Checking status for MySQL database...</info>");
+
+        return $this->getDestinationStatus($output, $config);
+    }
+
+    protected function executePostgresqlStatus(OutputInterface $output, $config)
+    {
+        $postgresqlConfig = $config['source_postgresql'];
+        $output->writeln("<info>Checking status for PostgreSQL database...</info>");
 
         return $this->getDestinationStatus($output, $config);
     }
@@ -76,6 +86,19 @@ class BackupStatusService
 
         foreach ($config['destination'] as $destId => $dest) {
             $output->writeln("<comment>\tGetting status for destination \"" . $dest . "\"...</comment>");
+
+            // Check permissions for local files.
+            if (substr($dest, 0, 7) == 'file://') {
+                $path = substr($dest, 7);
+                $cmd = "cd " . escapeshellarg($path) . "; tail -n 1 *.manifest 2>&1";
+                $cmdOutput = shell_exec($cmd);
+                if (strstr($cmdOutput, 'Permission denied') !== false) {
+                    $output->writeln("\t<error>Cannot access destination files - Permission denied</error>");
+
+                    return false;
+                }
+            }
+
             $cmd = "
                 " . $config['duplicity_credentials_cmd'] . "
                 duplicity \

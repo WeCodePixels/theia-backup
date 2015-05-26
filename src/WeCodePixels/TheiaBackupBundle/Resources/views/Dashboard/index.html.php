@@ -57,13 +57,27 @@ $view['slots']->start('body_content');
                             <td><?= $backupType ?></td>
                         </tr>
                         <?php
-                        if ($backupType == 'Files') {
-                            ?>
-                            <tr>
-                                <th>Source files</th>
-                                <td><?= $backup['source_files'] ?></td>
-                            </tr>
-                        <?php
+                        switch ($backupType) {
+                            case 'Files':
+                                echoBackupInfoRows(array(
+                                    'source_files' => $backup['source_files']
+                                ), array(
+                                    'source_files' => 'Source files'
+                                ));
+                                break;
+
+                            case 'MySQL':
+                                echoBackupInfoRows($backup['source_mysql'], array(
+                                    'hostname' => 'Host',
+                                    'exclude_databases' => 'Exclude databases',
+                                    'exclude_tables' => 'Exclude tables'
+                                ));
+                                break;
+
+                            case 'PostgreSQL':
+                                echoBackupInfoRows($backup['source_postgresql'], array(
+                                ));
+                                break;
                         }
                         ?>
                         <tr>
@@ -99,12 +113,14 @@ $view['slots']->start('body_content');
                     var status = msg.status;
                     var error = null;
 
+                    if (msg.output) {
+                        backupElement.find('.log').html(msg.output);
+                    }
+
                     if (!status) {
                         error = 'System error';
                     }
                     else {
-                        backupElement.find('.log').html(msg.output);
-
                         if (status.lastBackupTime) {
                             backupElement.find('.last-backup').html(status.lastBackupTime);
 
@@ -137,7 +153,6 @@ $view['slots']->start('body_content');
                             $(this).parent().find('.modal').modal('show');
                         })
                         .show();
-
                 }
             }(backupElement));
         }
@@ -145,3 +160,17 @@ $view['slots']->start('body_content');
 <?php
 }
 $view['slots']->stop('body_content');
+
+function echoBackupInfoRows($backup, $keys) {
+    foreach ($keys as $key => $title) {
+        if (array_key_exists($key, $backup)) {
+            $value = $backup[$key];
+            ?>
+            <tr>
+                <th><?=$title?></th>
+                <td><?= is_array($value) ? implode(', ', $value) : $value?></td>
+            </tr>
+        <?php
+        }
+    }
+}

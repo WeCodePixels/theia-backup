@@ -1,4 +1,4 @@
-$max-width: 1000px;
+$max-width: 1200px;
 $padding-l: 10px;
 
 * {
@@ -44,6 +44,8 @@ body {
 
     .right {
       float: right;
+
+      line-height: 39px;
     }
 
     h1 {
