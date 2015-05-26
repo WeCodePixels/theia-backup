@@ -31,7 +31,10 @@ we_code_pixels_theia_backup:
     backups:
         backup_1:
             title: "Files"
-            source_files: "/home/liviu/test_backup/"
+            source_files:
+                path: "/home/liviu/test_backup/"
+                additional_args: "--exclude-regex '.*/cache/.*' --exclude-regex '.*/logs/.*'"
+
             destination: "file:///home/liviu/test_backup_dest/"
             remove_older_than: 2M
             allow_source_mismatch: false

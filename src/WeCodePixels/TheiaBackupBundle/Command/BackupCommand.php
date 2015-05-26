@@ -42,7 +42,9 @@ class BackupCommand extends ContainerAwareCommand
 
     private function executeFilesBackup(InputInterface $input, OutputInterface $output, $config)
     {
-        $output->writeln("<info>Executing backup for \"" . $config['source_files'] . "\"</info>");
+        $filesConfig = $config['source_files'];
+
+        $output->writeln("<info>Executing backup for \"" . $filesConfig['path'] . "\"</info>");
 
         // Partial or full backup
         $full = '';
@@ -50,14 +52,13 @@ class BackupCommand extends ContainerAwareCommand
             $full = 'full';
         }
 
-        // Set exclusions.
-        $exclude = [];
-        if (array_key_exists('exclude', $config)) {
-            foreach ($config['exclude'] as $e) {
-                $exclude[] = '--exclude ' . escapeshellarg($e);
-            }
+        // Additional arguments.
+        if (array_key_exists('additional_args', $filesConfig)) {
+            $additional_args = $filesConfig['additional_args'];
         }
-        $exclude = implode(' ', $exclude);
+        else {
+            $additional_args = '';
+        }
 
         // Backup to each destination.
         foreach ($config['destination'] as $dest) {
@@ -89,12 +90,12 @@ class BackupCommand extends ContainerAwareCommand
                     " . $config['duplicity_credentials_cmd'] . "
                     duplicity \
                         $full \
-                        $exclude \
+                        $additional_args \
                         --volsize=250 \
                         --s3-use-new-style \
                         " . $config['additional_options'] . " \
                         " . ($config['allow_source_mismatch'] ? "--allow-source-mismatch" : "") . " \
-                        " . escapeshellarg($config['source_files']) . " " . escapeshellarg($dest) . " \
+                        " . escapeshellarg($filesConfig['path']) . " " . escapeshellarg($dest) . " \
                         2>&1
                 ";
 
@@ -159,7 +160,9 @@ class BackupCommand extends ContainerAwareCommand
 
         // Upload backups.
         unset($config['source_mysql']);
-        $config['source_files'] = $temporaryDir;
+        $config['source_files'] = array(
+            'path' => $temporaryDir
+        );
         $config['allow_source_mismatch'] = true;
         $this->executeFilesBackup($input, $output, $config);
 
@@ -203,7 +206,9 @@ class BackupCommand extends ContainerAwareCommand
 
         // Upload backups.
         unset($config['source_postgresql']);
-        $config['source_files'] = $temporaryDir;
+        $config['source_files'] = array(
+            'path' => $temporaryDir
+        );
         $config['allow_source_mismatch'] = true;
         $this->executeFilesBackup($input, $output, $config);
 
