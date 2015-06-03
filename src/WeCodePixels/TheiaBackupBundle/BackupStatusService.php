@@ -128,13 +128,14 @@ class BackupStatusService
 
             // Parse output.
             {
-                $str = 'Chain end time: ';
                 $lastBackupTime = null;
                 $lastBackupText = null;
                 $lastBackupAge = null;
                 $error = BackupStatusService::ERROR_OK;
 
-                $pos = strpos($cmdOutput, $str);
+                // Find the last occurrence since there can be multiple chains in the backup.
+                $str = 'Chain end time: ';
+                $pos = strrpos($cmdOutput, $str);
 
                 if ($pos) {
                     $lastBackupTime = substr($cmdOutput, strlen($str) + $pos, strpos($cmdOutput, "\n", $pos) - strlen($str) - $pos);
