@@ -149,8 +149,8 @@ class BackupStatusService
                     $lastBackupText = date("H:i:s d-m-y", $lastBackupTime);
                     $output->writeln("\t<comment>Last backup time: $lastBackupText ($lastBackupAge)</comment>");
 
-                    // Check elapsed time since last backup
-                    $errorThreshold = 0 * 60 * 60 * 12;
+                    // Check elapsed time since last backup.
+                    $errorThreshold = 60 * 60 * 12;
                     $elapsedSeconds = time() - $lastBackupTime;
                     if ($elapsedSeconds >= $errorThreshold) {
                         $output->writeln("\t<error>Backup older than $errorThreshold seconds</error>");
