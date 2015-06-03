@@ -6,6 +6,12 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class BackupStatusService
 {
+    const ERROR_OK = 0;
+
+    const ERROR_NO_BACKUP = 1;
+
+    const ERROR_OLD_BACKUP = 2;
+
     /* @var ConfigurationService */
     private $configurationService;
 
@@ -31,7 +37,8 @@ class BackupStatusService
         return $status;
     }
 
-    public function getStatusForBackup($backupId, OutputInterface $output) {
+    public function getStatusForBackup($backupId, OutputInterface $output)
+    {
         $status = null;
 
         // Get backup configuration.
@@ -120,27 +127,90 @@ class BackupStatusService
             }
 
             // Parse output.
-            $str = 'Chain end time: ';
-            $pos = strpos($cmdOutput, $str);
-            $lastBackupTime = null;
-            if ($pos) {
-                $lastBackupTime = substr($cmdOutput, strlen($str) + $pos, strpos($cmdOutput, "\n", $pos) - strlen($str) - $pos);
-            }
-            if ($lastBackupTime) {
-                $lastBackupTime = strtotime($lastBackupTime);
-                $lastBackupTime = date("H:i:s d-m-y", $lastBackupTime) . ' (' . round((time() - $lastBackupTime) / 60 / 60 / 24) . ' days ago)';
-                $output->writeln("\t<comment>Last backup time: $lastBackupTime</comment>");
-            } else {
-                $output->writeln("\t<error>No backup found</error>");
+            {
+                $str = 'Chain end time: ';
+                $lastBackupTime = null;
+                $lastBackupText = null;
+                $lastBackupAge = null;
+                $error = BackupStatusService::ERROR_OK;
+
+                $pos = strpos($cmdOutput, $str);
+
+                if ($pos) {
+                    $lastBackupTime = substr($cmdOutput, strlen($str) + $pos, strpos($cmdOutput, "\n", $pos) - strlen($str) - $pos);
+                }
+
+                if ($lastBackupTime) {
+                    $lastBackupTime = strtotime($lastBackupTime);
+                    $lastBackupAge = $this->getElapsedTime($lastBackupTime);
+
+                    // Output human-readable date.
+                    $lastBackupText = date("H:i:s d-m-y", $lastBackupTime);
+                    $output->writeln("\t<comment>Last backup time: $lastBackupText ($lastBackupAge)</comment>");
+
+                    // Check elapsed time since last backup
+                    $errorThreshold = 0 * 60 * 60 * 12;
+                    $elapsedSeconds = time() - $lastBackupTime;
+                    if ($elapsedSeconds >= $errorThreshold) {
+                        $output->writeln("\t<error>Backup older than $errorThreshold seconds</error>");
+                        $error = BackupStatusService::ERROR_OLD_BACKUP;
+                    }
+                } else {
+                    $output->writeln("\t<error>No backup found</error>");
+                    $error = BackupStatusService::ERROR_NO_BACKUP;
+                }
             }
 
             $status = array(
-                'lastBackupTime' => $lastBackupTime
+                'lastBackupTime' => $lastBackupTime,
+                'lastBackupText' => $lastBackupText,
+                'lastBackupAge' => $lastBackupAge,
+                'error' => $error
             );
         }
 
         return $status;
     }
+
+    /**
+     * Returns a rought approximation of the number of days/hours/minutes/etc. that have passed
+     * Taken from http://stackoverflow.com/a/14339355/148388
+     * @param int $pastTime A Unix timestamp.
+     * @return string
+     */
+    protected function getElapsedTime($pastTime)
+    {
+        $currentTime = time() - $pastTime;
+
+        if ($currentTime < 1) {
+            return '0 seconds';
+        }
+
+        $a = array(
+            365 * 24 * 60 * 60 => 'year',
+            30 * 24 * 60 * 60 => 'month',
+            24 * 60 * 60 => 'day',
+            60 * 60 => 'hour',
+            60 => 'minute',
+            1 => 'second'
+        );
+        $aPlural = array(
+            'year' => 'years',
+            'month' => 'months',
+            'day' => 'days',
+            'hour' => 'hours',
+            'minute' => 'minutes',
+            'second' => 'seconds'
+        );
+
+        foreach ($a as $secs => $str) {
+            $d = $currentTime / $secs;
+
+            if ($d >= 1) {
+                $r = round($d);
+
+                return $r . ' ' . ($r > 1 ? $aPlural[$str] : $str) . ' ago';
+            }
+        }
+    }
 }
-
-

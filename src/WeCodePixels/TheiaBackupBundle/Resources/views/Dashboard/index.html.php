@@ -1,5 +1,7 @@
 <?php
 
+use WeCodePixels\TheiaBackupBundle\BackupStatusService;
+
 /* @var Symfony\Bundle\FrameworkBundle\Templating\PhpEngine $view */
 $view->extend('WeCodePixelsTheiaBackupBundle::base.html.php');
 
@@ -9,7 +11,7 @@ $view['slots']->start('body_content');
 {
     ?>
 
-    <h1>Theia Backup</h1>
+    <h1>Theia Backup for <?=gethostname()?></h1>
 
     <div class="backups">
         <?php
@@ -31,7 +33,7 @@ $view['slots']->start('body_content');
 
                         <div class="right">
                             <span class="ajax-loader"></span>
-                            <button class="btn btn-default btn-sm toggle-log" style="display: none">View log</button>
+                            <button class="btn btn-default btn-sm toggle-log" style="display: none">View logs</button>
                             <div class="modal fade" role="dialog">
                                 <div class="modal-dialog">
                                     <div class="modal-content">
@@ -75,8 +77,7 @@ $view['slots']->start('body_content');
                                 break;
 
                             case 'PostgreSQL':
-                                echoBackupInfoRows($backup['source_postgresql'], array(
-                                ));
+                                echoBackupInfoRows($backup['source_postgresql'], array());
                                 break;
                         }
                         ?>
@@ -109,36 +110,46 @@ $view['slots']->start('body_content');
     <script>
         function getBackupStatus(ajaxUrl, backupElement) {
             $.ajax(ajaxUrl).always(function () {
-                return function (msg) {
-                    var status = msg.status;
-                    var error = null;
+                return function (data, textStatus, xhr) {
+                    var status = data.status;
+                    var errorMsg = null;
 
-                    if (msg.output) {
-                        backupElement.find('.log').html(msg.output);
+                    if (data.output) {
+                        backupElement.find('.log').html(data.output);
                     }
 
-                    if (!status) {
-                        error = 'System error';
+                    if (!status || !xhr || xhr.status != 200) {
+                        errorMsg = 'System error, check logs';
                     }
                     else {
-                        if (status.lastBackupTime) {
-                            backupElement.find('.last-backup').html(status.lastBackupTime);
+                        switch (status.error) {
+                            case <?=BackupStatusService::ERROR_NO_BACKUP?>:
+                                errorMsg = 'No backup found';
+                                break;
 
-                        }
-                        else {
-                            error = 'Could not get last backup time';
+                            case <?=BackupStatusService::ERROR_OLD_BACKUP?>:
+                                errorMsg = 'Backup too old';
+                                break;
+
+                            case <?=BackupStatusService::ERROR_OK?>:
+                                break;
                         }
                     }
 
-                    // Show status.
-                    if (!error) {
+                    // Show last backup age.
+                    if (status.lastBackupAge) {
+                        backupElement.find('.last-backup').html(status.lastBackupAge + ' (' + status.lastBackupText + ')');
+                    }
+
+                    // Show error message.
+                    if (!errorMsg) {
                         backupElement
                             .removeClass('panel-default')
                             .addClass('panel-success');
                         backupElement.find('.status').html('<span class="label label-success">All good</span>');
                     }
                     else {
-                        backupElement.find('.status').html('<span class="label label-danger">' + error + '</span>');
+                        backupElement.find('.status').html('<span class="label label-danger">' + errorMsg + '</span>');
                         backupElement
                             .removeClass('panel-default')
                             .addClass('panel-danger');
@@ -161,14 +172,15 @@ $view['slots']->start('body_content');
 }
 $view['slots']->stop('body_content');
 
-function echoBackupInfoRows($backup, $keys) {
+function echoBackupInfoRows($backup, $keys)
+{
     foreach ($keys as $key => $title) {
         if (array_key_exists($key, $backup)) {
             $value = $backup[$key];
             ?>
             <tr>
-                <th><?=$title?></th>
-                <td><?= is_array($value) ? implode(', ', $value) : $value?></td>
+                <th><?= $title ?></th>
+                <td><?= is_array($value) ? implode(', ', $value) : $value ?></td>
             </tr>
         <?php
         }
