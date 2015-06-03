@@ -12,7 +12,7 @@
     foreach ($view['assetic']->stylesheets([
         '@WeCodePixelsTheiaBackupBundle/Resources/scss/*.scss',
     ], [
-        'compass', '?uglifycss'
+        'compass'
     ]) as $url) {
         ?>
         <link rel="stylesheet" type="text/css" href="<?= $view->escape($url) ?>">
