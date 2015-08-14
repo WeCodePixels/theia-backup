@@ -53,6 +53,10 @@ class BackupStatusService
         $backupConfig = array_merge($config, $backupConfig);
         $backupConfig = $this->configurationService->parseConfig($backupConfig);
 
+        // Display message.
+        $output->writeln("<info>Checking status for backup \"" . $backupConfig['title'] . "\"...</info>");
+
+        // Get status.
         if (array_key_exists('source_mysql', $backupConfig)) {
             $status = $this->executeMysqlStatus($output, $backupConfig);
         } else if (array_key_exists('source_postgresql', $backupConfig)) {
@@ -66,24 +70,16 @@ class BackupStatusService
 
     private function executeFilesStatus(OutputInterface $output, $config)
     {
-        $output->writeln("<info>Checking status for files at \"" . $config['source_files'] . "\"...</info>");
-
         return $this->getDestinationStatus($output, $config);
     }
 
     protected function executeMysqlStatus(OutputInterface $output, $config)
     {
-        $mysqlConfig = $config['source_mysql'];
-        $output->writeln("<info>Checking status for MySQL database...</info>");
-
         return $this->getDestinationStatus($output, $config);
     }
 
     protected function executePostgresqlStatus(OutputInterface $output, $config)
     {
-        $postgresqlConfig = $config['source_postgresql'];
-        $output->writeln("<info>Checking status for PostgreSQL database...</info>");
-
         return $this->getDestinationStatus($output, $config);
     }
 
