@@ -26,6 +26,19 @@ class ConfigurationService
         // Get credentials.
         {
             $config['duplicity_credentials_cmd'] = "";
+
+            if ($config['azure_account_name']) {
+                $config['duplicity_credentials_cmd'] .= "
+                export AZURE_ACCOUNT_NAME='$config[azure_account_name]'
+                ";
+            }
+
+            if ($config['azure_account_key']) {
+                $config['duplicity_credentials_cmd'] .= "
+                export AZURE_ACCOUNT_KEY='$config[azure_account_key]'
+                ";
+            }
+
             if (
                 $config['aws_access_key_id'] &&
                 $config['aws_secret_access_key']

@@ -20,6 +20,8 @@ parameters:
     secret:            ThisTokenIsNotSoSecretChangeIt
 
 we_code_pixels_theia_backup:
+    azure_account_name: ~
+    azure_account_key: ~
     aws_access_key_id: ~
     aws_secret_access_key: ~
     gpg_encryption_key: ~

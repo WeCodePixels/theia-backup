@@ -22,6 +22,8 @@ class Configuration implements ConfigurationInterface
 
         $rootNode
             ->children()
+                ->scalarNode('azure_account_name')->end()
+                ->scalarNode('azure_account_key')->end()
                 ->scalarNode('aws_access_key_id')->end()
                 ->scalarNode('aws_secret_access_key')->end()
                 ->scalarNode('gpg_encryption_key')->end()
