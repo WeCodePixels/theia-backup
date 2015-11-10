@@ -32,6 +32,7 @@ class Configuration implements ConfigurationInterface
                 ->scalarNode('gpg_signature_passphrase')->end()
                 ->booleanNode('enable_encryption')->defaultValue(true)->end()
                 ->scalarNode('temp_dir')->isRequired()->end()
+                ->scalarNode('archive_dir')->isRequired()->end()
                 ->arrayNode('backups')->isRequired()
                     ->prototype('array')
                         ->children()

@@ -81,6 +81,9 @@ class ConfigurationService
                 $config['additional_options'][] = "--sign-key=" . $config['gpg_signature_key'];
             }
 
+            // Use specific archive directory.
+            $config['additional_options'][] = '--archive-dir=' . escapeshellarg($config['archive_dir']);
+
             $config['additional_options'] = implode(' ', $config['additional_options']);
         }
 
