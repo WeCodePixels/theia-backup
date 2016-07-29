@@ -6,3 +6,4 @@ services:
         class: WeCodePixels\TheiaBackupBundle\BackupStatusService
         arguments:
             configuration_service: '@wecodepixels.theia_backup.configuration_service'
+            entity_manager: '@doctrine.orm.default_entity_manager'

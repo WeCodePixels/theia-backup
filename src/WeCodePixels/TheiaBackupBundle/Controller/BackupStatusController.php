@@ -17,7 +17,7 @@ class BackupStatusController extends Controller
 
         /* @var BackupStatusService */
         $backupStatusService = $this->get('wecodepixels.theia_backup.backup_status_service');
-        $status = $backupStatusService->getStatusForBackup($backupId ,$output);
+        $status = $backupStatusService->getStatusForBackup($output, $backupId, true);
 
         return new JsonResponse(array(
             'status' => $status,
