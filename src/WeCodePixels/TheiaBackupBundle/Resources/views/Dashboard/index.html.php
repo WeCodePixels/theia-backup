@@ -10,6 +10,9 @@ $view->extend('WeCodePixelsTheiaBackupBundle::base.html.php');
 $view['slots']->start('body_content');
 {
     ?>
+    <script>
+        var backups = [];
+    </script>
 
     <h1 class="panel panel-default">
         Theia Backup for <?=gethostname()?>
@@ -34,7 +37,7 @@ $view['slots']->start('body_content');
                         <h1><?= $backup['title'] ?></h1>
 
                         <div class="right">
-                            <span class="ajax-loader"></span>
+                            <span class="ajax-loader" style="display: none"></span>
                             <button class="btn btn-default btn-sm toggle-log" style="display: none"><i class="fa fa-file-text-o" aria-hidden="true"></i> View logs</button>
                             <div class="modal fade" role="dialog">
                                 <div class="modal-dialog">
@@ -98,11 +101,9 @@ $view['slots']->start('body_content');
                     </table>
 
                     <script>
-                        $(document).ready(function () {
-                            var ajaxUrl = <?=json_encode($view['router']->generate('theiabackup_ajax_backup_status', array('backupId' => $backupId)))?>;
-                            var backupId = <?=json_encode($backupId)?>;
-
-                            getBackupStatus(ajaxUrl, $('#' + backupId));
+                        backups.push({
+                            ajaxUrl: <?=json_encode($view['router']->generate('theiabackup_ajax_backup_status', array('backupId' => $backupId)))?>,
+                            backupId: <?=json_encode($backupId)?>
                         });
                     </script>
                 </article>
@@ -114,7 +115,23 @@ $view['slots']->start('body_content');
     </div>
 
     <script>
+        function refreshBackupStatus() {
+            for (var i = 0; i < backups.length; i++) {
+                var backup = backups[i];
+
+                getBackupStatus(backup.ajaxUrl, $('#' + backup.backupId));
+            }
+        }
+
         function getBackupStatus(ajaxUrl, backupElement) {
+            // Don't do anything if still loading.
+            if (backupElement.find('.ajax-loader').is(':visible')) {
+                return;
+            }
+
+            backupElement.find('.ajax-loader').show();
+            backupElement.find('.toggle-log').hide();
+
             $.ajax(ajaxUrl).always(function () {
                 return function (data, textStatus, xhr) {
                     var status = data.status;
@@ -167,7 +184,7 @@ $view['slots']->start('body_content');
                     }
 
                     // Hide ajax loader.
-                    backupElement.find('.ajax-loader').remove();
+                    backupElement.find('.ajax-loader').hide();
 
                     // Show toggle log button.
                     backupElement.find('.toggle-log')
@@ -178,6 +195,12 @@ $view['slots']->start('body_content');
                 }
             }(backupElement));
         }
+
+        $(document).ready(function () {
+            refreshBackupStatus();
+
+            setInterval(refreshBackupStatus, 60000);
+        });
     </script>
 <?php
 }
