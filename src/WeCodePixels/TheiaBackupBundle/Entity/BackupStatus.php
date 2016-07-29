@@ -5,12 +5,13 @@ namespace WeCodePixels\TheiaBackupBundle\Entity;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\ORM\Mapping\Table;
 use Doctrine\ORM\Mapping\Index;
+use WeCodePixels\TheiaBackupBundle\Misc;
 
 /**
  * @ORM\Entity
  * @Table(name="backup_status", indexes={@Index(name="backup_id_idx", columns={"backup_id", "destination", "timestamp"})})
  */
-class BackupStatus
+class BackupStatus implements \JsonSerializable
 {
     /**
      * @ORM\Column(type="integer")
@@ -39,9 +40,29 @@ class BackupStatus
      */
     private $timestamp;
 
+    public $lastBackupTime;
+
+    public $lastBackupText;
+
+    public $lastBackupAge;
+
+    public $error;
+
     public function __construct()
     {
         $this->timestamp = new \DateTime();
+    }
+
+    public function jsonSerialize()
+    {
+        return [
+            'timestampText' => Misc::getTextForTimestamp($this->timestamp->getTimestamp()),
+            'timestampAge' => Misc::getElapsedTime($this->timestamp->getTimestamp()),
+            'lastBackupTime' => $this->lastBackupTime,
+            'lastBackupText' => $this->lastBackupText,
+            'lastBackupAge' => $this->lastBackupAge,
+            'error' => $this->error
+        ];
     }
 
     /**

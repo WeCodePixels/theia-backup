@@ -11,7 +11,9 @@ $view['slots']->start('body_content');
 {
     ?>
 
-    <h1>Theia Backup for <?=gethostname()?></h1>
+    <h1 class="panel panel-default">
+        Theia Backup for <?=gethostname()?>
+    </h1>
 
     <div class="backups">
         <?php
@@ -33,7 +35,7 @@ $view['slots']->start('body_content');
 
                         <div class="right">
                             <span class="ajax-loader"></span>
-                            <button class="btn btn-default btn-sm toggle-log" style="display: none">View logs</button>
+                            <button class="btn btn-default btn-sm toggle-log" style="display: none"><i class="fa fa-file-text-o" aria-hidden="true"></i> View logs</button>
                             <div class="modal fade" role="dialog">
                                 <div class="modal-dialog">
                                     <div class="modal-content">
@@ -49,13 +51,13 @@ $view['slots']->start('body_content');
                         </div>
                     </div>
 
-                    <table class="table details">
+                    <table class="table table-striped details">
                         <tr>
-                            <th>Destination</th>
+                            <th><i class="fa fa-folder-open-o" aria-hidden="true"></i> Destination</th>
                             <td><?= $backup['destination'] ?></td>
                         </tr>
                         <tr>
-                            <th>Backup type</th>
+                            <th><i class="fa fa-file-o" aria-hidden="true"></i> Backup type</th>
                             <td><?= $backupType ?></td>
                         </tr>
                         <?php
@@ -64,15 +66,15 @@ $view['slots']->start('body_content');
                                 echoBackupInfoRows(array(
                                     'source_files' => $backup['source_files']
                                 ), array(
-                                    'source_files' => 'Source files'
+                                    'source_files' => '<i class="fa fa-files-o" aria-hidden="true"></i> Source files'
                                 ));
                                 break;
 
                             case 'MySQL':
                                 echoBackupInfoRows($backup['source_mysql'], array(
-                                    'hostname' => 'Host',
-                                    'exclude_databases' => 'Exclude databases',
-                                    'exclude_tables' => 'Exclude tables'
+                                    'hostname' => '<i class="fa fa-server" aria-hidden="true"></i> Host',
+                                    'exclude_databases' => '<i class="fa fa-database" aria-hidden="true"></i> Exclude databases',
+                                    'exclude_tables' => '<i class="fa fa-table" aria-hidden="true"></i> Exclude tables'
                                 ));
                                 break;
 
@@ -82,11 +84,15 @@ $view['slots']->start('body_content');
                         }
                         ?>
                         <tr>
-                            <th>Last backup</th>
+                            <th><i class="fa fa-clock-o" aria-hidden="true"></i> Last checked on</th>
+                            <td class="status-timestamp"></td>
+                        </tr>
+                        <tr>
+                            <th><i class="fa fa-clock-o" aria-hidden="true"></i> Last backup</th>
                             <td class="last-backup"></td>
                         </tr>
                         <tr>
-                            <th>Status</th>
+                            <th><i class="fa fa-stethoscope" aria-hidden="true"></i> Status</th>
                             <td class="status"></td>
                         </tr>
                     </table>
@@ -134,6 +140,11 @@ $view['slots']->start('body_content');
                             case <?=BackupStatusService::ERROR_OK?>:
                                 break;
                         }
+                    }
+
+                    // Show status timestamp.
+                    if (status.timestampAge) {
+                        backupElement.find('.status-timestamp').html(status.timestampAge + ' (' + status.timestampText + ')');
                     }
 
                     // Show last backup age.

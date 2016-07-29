@@ -33,7 +33,7 @@ class BackupStatusService
 
     /**
      * Get live status of all backups.
-     * 
+     *
      * @param OutputInterface $output
      * @return array
      */
@@ -108,26 +108,33 @@ class BackupStatusService
         return $this->getDestinationStatus($output, $backupId, $config, $useCachedOutput);
     }
 
+    /**
+     * @param OutputInterface $output
+     * @param $backupId
+     * @param $config
+     * @param $useCachedOutput
+     * @return null|BackupStatus
+     */
     protected function getDestinationStatus(OutputInterface $output, $backupId, $config, $useCachedOutput)
     {
+        /* @var BackupStatus */
         $status = null;
 
         foreach ($config['destination'] as $destId => $dest) {
             $output->writeln("<comment>\tGetting status for destination \"" . $dest . "\"...</comment>");
 
             if (!$useCachedOutput) {
-                $cmdOutput = $this->getLiveOutput($output, $backupId, $dest, $config);
-            }
-            else {
-                $cmdOutput = $this->getCachedOutput($output, $backupId, $dest, $config);
+                $status = $this->getLiveOutput($output, $backupId, $dest, $config);
+            } else {
+                $status = $this->getCachedOutput($output, $backupId, $dest);
             }
 
             if ($output->isVerbose()) {
-                $output->writeln("<comment>\tOutput is: \"$cmdOutput\"");
+                $output->writeln("<comment>\tOutput is: \"" . $status->getOutput() . "\"");
             }
 
             // Parse output.
-            $status = $this->parseOutput($output, $cmdOutput);
+            $this->parseOutput($output, $status);
         }
 
         return $status;
@@ -140,7 +147,7 @@ class BackupStatusService
      * @param $backupId
      * @param $dest
      * @param $config
-     * @return bool|string
+     * @return BackupStatus
      */
     public function getLiveOutput(OutputInterface $output, $backupId, $dest, $config)
     {
@@ -152,7 +159,7 @@ class BackupStatusService
             if (strstr($cmdOutput, 'Permission denied') !== false) {
                 $output->writeln("\t<error>Cannot access destination files - Permission denied</error>");
 
-                return false;
+                return null;
             }
         }
 
@@ -172,15 +179,16 @@ class BackupStatusService
         $cmd = $config['duplicity_credentials_cmd'] . " " . $cmd;
         $cmdOutput = shell_exec($cmd);
 
-        // Save output to database.
-        $backupStatus = new BackupStatus();
-        $backupStatus->setBackupId($backupId);
-        $backupStatus->setDestination($dest);
-        $backupStatus->setOutput($cmdOutput);
-        $this->em->persist($backupStatus);
+        $status = new BackupStatus();
+        $status->setBackupId($backupId);
+        $status->setDestination($dest);
+        $status->setOutput($cmdOutput);
+
+        // Save status to database.
+        $this->em->persist($status);
         $this->em->flush();
 
-        return $cmdOutput;
+        return $status;
     }
 
     /**
@@ -189,10 +197,9 @@ class BackupStatusService
      * @param OutputInterface $output
      * @param $backupId
      * @param $dest
-     * @param $config
-     * @return string
+     * @return BackupStatus
      */
-    public function getCachedOutput(OutputInterface $output, $backupId, $dest, $config)
+    public function getCachedOutput(OutputInterface $output, $backupId, $dest)
     {
         $status = $this->backupStatusRepository->findOneBy([
             'backupId' => $backupId,
@@ -201,102 +208,48 @@ class BackupStatusService
             'timestamp' => 'DESC'
         ]);
 
-        return $status->getOutput();
+        return $status;
     }
 
     /**
      * Parse duplicity output.
      *
      * @param OutputInterface $output
-     * @param $cmdOutput
-     * @return array
+     * @param BackupStatus $status
      */
-    public function parseOutput(OutputInterface $output, $cmdOutput)
+    public function parseOutput(OutputInterface $output, BackupStatus $status)
     {
-        $lastBackupTime = null;
-        $lastBackupText = null;
-        $lastBackupAge = null;
-        $error = BackupStatusService::ERROR_OK;
+        $status->lastBackupTime = null;
+        $status->lastBackupText = null;
+        $status->lastBackupAge = null;
+        $status->error = BackupStatusService::ERROR_OK;
 
         // Find the last occurrence since there can be multiple chains in the backup.
         $str = 'Chain end time: ';
-        $pos = strrpos($cmdOutput, $str);
+        $pos = strrpos($status->getOutput(), $str);
 
         if ($pos) {
-            $lastBackupTime = substr($cmdOutput, strlen($str) + $pos, strpos($cmdOutput, "\n", $pos) - strlen($str) - $pos);
+            $status->lastBackupTime = substr($status->getOutput(), strlen($str) + $pos, strpos($status->getOutput(), "\n", $pos) - strlen($str) - $pos);
         }
 
-        if ($lastBackupTime) {
-            $lastBackupTime = strtotime($lastBackupTime);
-            $lastBackupAge = $this->getElapsedTime($lastBackupTime);
+        if ($status->lastBackupTime) {
+            $status->lastBackupTime = strtotime($status->lastBackupTime);
+            $status->lastBackupAge = Misc::getElapsedTime($status->lastBackupTime);
 
             // Output human-readable date.
-            $lastBackupText = date("H:i:s d-m-y", $lastBackupTime);
-            $output->writeln("\t<comment>Last backup time: $lastBackupText ($lastBackupAge)</comment>");
+            $status->lastBackupText = Misc::getTextForTimestamp($status->lastBackupTime);
+            $output->writeln("\t<comment>Last backup time: $status->lastBackupText ($status->lastBackupAge)</comment>");
 
             // Check elapsed time since last backup.
             $errorThreshold = 60 * 60 * 12;
-            $elapsedSeconds = time() - $lastBackupTime;
+            $elapsedSeconds = time() - $status->lastBackupTime;
             if ($elapsedSeconds >= $errorThreshold) {
                 $output->writeln("\t<error>Backup older than $errorThreshold seconds</error>");
-                $error = BackupStatusService::ERROR_OLD_BACKUP;
+                $status->error = BackupStatusService::ERROR_OLD_BACKUP;
             }
         } else {
             $output->writeln("\t<error>No backup found</error>");
-            $error = BackupStatusService::ERROR_NO_BACKUP;
+            $status->error = BackupStatusService::ERROR_NO_BACKUP;
         }
-
-        $status = array(
-            'lastBackupTime' => $lastBackupTime,
-            'lastBackupText' => $lastBackupText,
-            'lastBackupAge' => $lastBackupAge,
-            'error' => $error
-        );
-
-        return $status;
-    }
-
-    /**
-     * Returns a rought approximation of the number of days/hours/minutes/etc. that have passed
-     * Taken from http://stackoverflow.com/a/14339355/148388
-     * @param int $pastTime A Unix timestamp.
-     * @return string
-     */
-    protected function getElapsedTime($pastTime)
-    {
-        $currentTime = time() - $pastTime;
-
-        if ($currentTime < 1) {
-            return '0 seconds';
-        }
-
-        $a = array(
-            365 * 24 * 60 * 60 => 'year',
-            30 * 24 * 60 * 60 => 'month',
-            24 * 60 * 60 => 'day',
-            60 * 60 => 'hour',
-            60 => 'minute',
-            1 => 'second'
-        );
-        $aPlural = array(
-            'year' => 'years',
-            'month' => 'months',
-            'day' => 'days',
-            'hour' => 'hours',
-            'minute' => 'minutes',
-            'second' => 'seconds'
-        );
-
-        foreach ($a as $secs => $str) {
-            $d = $currentTime / $secs;
-
-            if ($d >= 1) {
-                $r = round($d);
-
-                return $r . ' ' . ($r > 1 ? $aPlural[$str] : $str) . ' ago';
-            }
-        }
-
-        return '';
     }
 }
